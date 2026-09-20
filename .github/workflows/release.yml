@@ -69,7 +69,9 @@ jobs:
 
       - name: Push to NuGet.org
         if: ${{ inputs.deploy || github.ref_type == 'tag' }}
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: >
           dotnet nuget push "artifacts/*.nupkg"
-          -ApiKey ${{ steps.login.outputs.NUGET_API_KEY }}
+          -k "$NUGET_API_KEY"
           -s https://api.nuget.org/v3/index.json

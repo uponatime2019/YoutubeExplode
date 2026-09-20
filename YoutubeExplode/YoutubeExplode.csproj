@@ -16,8 +16,7 @@
   <PropertyGroup>
     <PackageIcon>favicon.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- JsonExtensions v1.2.0 (pinned for UWP compatibility, see below) is not strong-named;
-         the reference is compile-time only, as the package is internalized into this assembly. -->
+    <!-- JsonExtensions is not strong-named; it is referenced by the netstandard2.0 (UWP) target. -->
     <NoWarn>$(NoWarn);CS8002</NoWarn>
   </PropertyGroup>
 
@@ -26,19 +25,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AngleSharp" Internalize="true" PrivateAssets="all" />
     <PackageReference Include="Binternal" PrivateAssets="all" />
     <PackageReference Include="CSharpier.MsBuild" PrivateAssets="all" />
-    <PackageReference Include="Deorcify" Internalize="true" PrivateAssets="all" />
-    <PackageReference Include="JsonExtensions" Internalize="true" PrivateAssets="all" />
+    <PackageReference Include="Deorcify" PrivateAssets="all" />
     <PackageReference Include="Lazy.Fody" PrivateAssets="all" />
+    <!-- The following two pins replicate the dependency set of the last known-good UWP release
+         (6.6.0). Newer versions emit C# 14 extension-member metadata that the legacy .NET Native
+         rhbind PDB generator cannot parse (RHB0011: 'pchTypeNameEnd[0] == L'>''). -->
     <PackageReference
       Include="Microsoft.Bcl.AsyncInterfaces"
       Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netstandard2.1'))"
+      VersionOverride="10.0.5"
     />
-    <PackageReference Include="PolyShim" PrivateAssets="all" />
-    <PackageReference Include="PowerKit" Internalize="true" PrivateAssets="all" />
+    <PackageReference Include="PolyShim" PrivateAssets="all" VersionOverride="2.11.0-a.1" />
     <PackageReference Include="Snek" PrivateAssets="all" />
+    <!-- AngleSharp depends on System.Text.Encoding.CodePages. Referencing it directly keeps
+         Binternal from merging it into this assembly, which would duplicate the types provided
+         by the framework and break the UWP .NET Native toolchain. -->
+    <PackageReference
+      Include="System.Text.Encoding.CodePages"
+      Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netcoreapp3.0'))"
+    />
     <!-- System.Text.Json is downgraded to v9.0.2 for netstandard2.0 targets to maintain compatibility
          with UWP projects using the .NET Native Toolchain, which cannot handle v10.x.
          See https://github.com/Tyrrrz/YoutubeExplode/issues/937 -->
@@ -51,5 +58,25 @@
       Include="System.Threading.Tasks.Extensions"
       Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netstandard2.1'))"
     />
+  </ItemGroup>
+
+  <!-- UWP (.NET Native) consumers resolve the netstandard2.0 target. Merging dependencies into
+       this assembly via Binternal/ILRepack produces an assembly that makes the .NET Native
+       toolchain fail with "Internal compiler error: Sequence contains more than one element",
+       so keep the dependencies external for this target and only internalize them elsewhere. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="JsonExtensions" />
+    <!-- PowerKit 2.x ships a compiled assembly whose PolyShim-embedded metadata breaks the
+         .NET Native toolchain (ILC "Sequence contains more than one element" when internalized,
+         rhbind RHB0011 when referenced externally). 0.0.0-a.9 is source-only, exactly like the
+         version shipped by 6.6.0, so its code is compiled inline instead. -->
+    <PackageReference Include="PowerKit" PrivateAssets="all" VersionOverride="0.0.0-a.9" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <PackageReference Include="AngleSharp" Internalize="true" PrivateAssets="all" />
+    <PackageReference Include="JsonExtensions" Internalize="true" PrivateAssets="all" />
+    <PackageReference Include="PowerKit" Internalize="true" PrivateAssets="all" />
   </ItemGroup>
 </Project>

@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0;net7.0;net10.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
+    <PackageId>YoutubeExplodeUWP</PackageId>
     <IsTrimmable
       Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net6.0'))"
       >true</IsTrimmable
@@ -15,6 +16,9 @@
   <PropertyGroup>
     <PackageIcon>favicon.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- JsonExtensions v1.2.0 (pinned for UWP compatibility, see below) is not strong-named;
+         the reference is compile-time only, as the package is internalized into this assembly. -->
+    <NoWarn>$(NoWarn);CS8002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,9 +39,13 @@
     <PackageReference Include="PolyShim" PrivateAssets="all" />
     <PackageReference Include="PowerKit" Internalize="true" PrivateAssets="all" />
     <PackageReference Include="Snek" PrivateAssets="all" />
+    <!-- System.Text.Json is downgraded to v9.0.2 for netstandard2.0 targets to maintain compatibility
+         with UWP projects using the .NET Native Toolchain, which cannot handle v10.x.
+         See https://github.com/Tyrrrz/YoutubeExplode/issues/937 -->
     <PackageReference
       Include="System.Text.Json"
       Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netcoreapp3.0'))"
+      VersionOverride="9.0.2"
     />
     <PackageReference
       Include="System.Threading.Tasks.Extensions"

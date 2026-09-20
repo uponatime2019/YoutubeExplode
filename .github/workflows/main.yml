@@ -17,8 +17,6 @@ on:
   push:
     branches:
       - prime
-    tags:
-      - "*"
   pull_request:
     branches:
       - prime

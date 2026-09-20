@@ -17,7 +17,9 @@
     <PackageVersion Include="FluentAssertions" Version="8.10.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5" />
     <PackageVersion Include="Gress" Version="2.2.0" />
-    <PackageVersion Include="JsonExtensions" Version="1.2.3" />
+    <!-- Pinned to 1.2.0: newer versions depend on System.Text.Json >= 10.0.8, which conflicts
+         with the v9.0.2 pin required by UWP (.NET Native) consumers. See issue #937. -->
+    <PackageVersion Include="JsonExtensions" Version="1.2.0" />
     <PackageVersion Include="Lazy.Fody" Version="1.11.0" />
     <PackageVersion Include="Material.Avalonia" Version="3.16.1" />
     <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.2" />

@@ -1,0 +1,75 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      package-version:
+        type: string
+        description: Package version
+        required: false
+      deploy:
+        type: boolean
+        description: Deploy package to NuGet.org
+        required: false
+        default: false
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for NuGet Trusted Publishing (OIDC token exchange)
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+
+      - name: Determine package version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.package-version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-ci-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pack
+        run: >
+          dotnet pack YoutubeExplode/YoutubeExplode.csproj
+          -c Release
+          -p:Version=${{ steps.version.outputs.version }}
+          -o artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: artifacts/*.nupkg
+
+      # Trusted publishing: exchange the workflow's OIDC token for a short-lived
+      # NuGet API key. Requires a matching policy on NuGet.org (owner: uponatime2019,
+      # repository: YoutubeExplode, workflow: release.yml). If the policy specifies
+      # an environment, add `environment: <name>` to this job.
+      - name: Login to NuGet.org
+        if: ${{ inputs.deploy || github.ref_type == 'tag' }}
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user-organization: ${{ github.repository_owner }}
+
+      - name: Push to NuGet.org
+        if: ${{ inputs.deploy || github.ref_type == 'tag' }}
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          -ApiKey ${{ steps.login.outputs.NUGET_API_KEY }}
+          -s https://api.nuget.org/v3/index.json
